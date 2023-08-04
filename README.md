@@ -1,1 +1,1 @@
-# maze-solver
+This program will automatically generate and solve mazes made out of drawn cells.
