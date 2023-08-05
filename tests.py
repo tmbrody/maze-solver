@@ -21,7 +21,7 @@ class Tests(unittest.TestCase):
         num_cols = 3
         num_rows = 3
         win = MagicMock()
-        maze = Maze(0, 0, num_rows, num_cols, 20, 20, win)
+        maze = Maze(10, 10, num_rows, num_cols, 20, 20, win)
 
         entrance_cell = maze._cells[0][0]
         exit_cell = maze._cells[num_cols - 1][num_rows - 1]
@@ -38,6 +38,21 @@ class Tests(unittest.TestCase):
         self.assertTrue(exit_cell.has_left_wall)
         self.assertTrue(exit_cell.has_right_wall)
 
+    def test_maze_reset_cells_visited(self):
+        num_cols = 10
+        num_rows = 10
+        win = MagicMock()
+        maze = Maze(25, 25, num_rows, num_cols, 50, 50, win)
+
+        for i in range(num_cols):
+            for j in range(num_rows):
+                maze._cells[i][j].visited = True
+
+        maze._reset_cells_visited()
+
+        for i in range(num_cols):
+            for j in range(num_rows):
+                self.assertFalse(maze._cells[i][j].visited)
+
 if __name__ == "__main__":
     unittest.main()
-    

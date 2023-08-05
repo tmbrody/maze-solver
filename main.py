@@ -1,5 +1,7 @@
 from tkinter import Tk, BOTH, Canvas
 from time import sleep
+import random
+from collections import deque
 
 class Window:
     def __init__(self, width, height):
@@ -18,6 +20,9 @@ class Window:
 
     def draw_line(self, line, fill_color):
         line.draw(self.__canvas, fill_color)
+
+    def clear_canvas(self):
+        self.__canvas.delete("all")
 
     def wait_for_close(self):
         self.__running = True
@@ -57,7 +62,6 @@ class Cell:
             has_top_wall=True, 
             has_bottom_wall=True
     ):
-
         self.has_left_wall = has_left_wall
         self.has_right_wall = has_right_wall
         self.has_top_wall = has_top_wall
@@ -67,6 +71,7 @@ class Cell:
         self._x2 = x2
         self._y2 = y2
         self._win = None
+        self.visited = False
 
     def set_window(self, win=None):
         self._win = win
@@ -126,6 +131,17 @@ class Cell:
         self._win.draw_line(Line(
             x1_center, y1_center, x2_center, y2_center), line_color)
         
+    def has_wall_to(self, other_cell):
+        if self._x2 == other_cell._x1:
+            return self.has_right_wall or other_cell.has_left_wall
+        elif self._x1 == other_cell._x2:
+            return self.has_left_wall or other_cell.has_right_wall
+        elif self._y2 == other_cell._y1:
+            return self.has_bottom_wall or other_cell.has_top_wall
+        elif self._y1 == other_cell._y2:
+            return self.has_top_wall or other_cell.has_bottom_wall
+        return False
+        
 class Maze:
     def __init__(
             self,
@@ -135,7 +151,8 @@ class Maze:
             num_cols,
             cell_size_x,
             cell_size_y,
-            win=None
+            win=None,
+            seed=None,
     ):
         self._x1 = x1
         self._y1 = y1
@@ -144,6 +161,12 @@ class Maze:
         self._cell_size_x = cell_size_x
         self._cell_size_y = cell_size_y
         self._win = win
+
+        if seed is not None:
+            random.seed(seed)
+        else:
+            random.seed()
+
         self._cells = []
         self._create_cells()
         self._animate()
@@ -171,7 +194,6 @@ class Maze:
             for j in range(self._num_rows):
                 self._draw_cell(i, j)
                 self._win.redraw()
-                sleep(0.05)
 
     def _break_entrance_and_exit(self):
         entrance_cell = self._cells[0][0]
@@ -182,12 +204,95 @@ class Maze:
         exit_cell.has_bottom_wall = False
         self._draw_cell(self._num_cols - 1, self._num_rows - 1)
 
+    def _break_walls_r(self, i, j):
+        queue = deque([(i, j)])
+        self._cells[i][j].visited = True
+
+        while queue:
+            i, j = queue.popleft()
+            current_cell = self._cells[i][j]
+            current_cell.visited = True
+            possible_directions = []
+
+            if j > 0 and not self._cells[i][j - 1].visited:
+                possible_directions.append((i, j - 1))
+
+            if i < self._num_cols - 1 and not self._cells[i + 1][j].visited:
+                possible_directions.append((i + 1, j))
+
+            if j < self._num_rows - 1 and not self._cells[i][j + 1].visited:
+                possible_directions.append((i, j + 1))
+
+            if i > 0 and not self._cells[i - 1][j].visited:
+                possible_directions.append((i - 1, j))
+
+            if not possible_directions:
+                self._draw_cell(i, j)
+            else:
+                i_next, j_next = random.choice(possible_directions)
+                next_cell = self._cells[i_next][j_next]
+
+                if i_next > i:
+                    current_cell.has_right_wall = False
+                    next_cell.has_left_wall = False
+                elif i_next < i:
+                    current_cell.has_left_wall = False
+                    next_cell.has_right_wall = False
+                elif j_next > j:
+                    current_cell.has_bottom_wall = False
+                    next_cell.has_top_wall = False
+                elif j_next < j:
+                    current_cell.has_top_wall = False
+                    next_cell.has_bottom_wall = False
+
+                self._draw_cell(i, j)
+                queue.append((i_next, j_next))
+                next_cell.visited = True
+                self._break_walls_r(i_next, j_next)
+
+    def _reset_cells_visited(self):
+        for i in range(self._num_cols):
+            for j in range(self._num_rows):
+                self._cells[i][j].visited = False
+
+    def generate_maze(self):
+        self._break_walls_r(0, 0)
+        self._reset_cells_visited()
+
+    def solve(self):
+        return self._solve_r(0, 0)
+
+    def _solve_r(self, i, j):
+        self._win.redraw()
+        sleep(0.01)
+
+        current_cell = self._cells[i][j]
+        current_cell.visited = True
+
+        if current_cell == self._cells[self._num_cols - 1][self._num_rows - 1]:
+            return True
+        
+        directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        for dx, dy in directions:
+            next_i, next_j = i + dx, j + dy
+            if 0 <= next_i < self._num_cols and 0 <= next_j < self._num_rows:
+                next_cell = self._cells[next_i][next_j]
+                if not current_cell.has_wall_to(next_cell) and not next_cell.visited:
+                    current_cell.draw_move(next_cell)
+                    if self._solve_r(next_i, next_j):
+                        return True
+                    next_cell.draw_move(current_cell, True)
+        return False
+
 def main():
     win = Window(800, 600)
 
-    Maze(100, 100, 5, 5, 40, 40, win)
-
-    win.wait_for_close()
-
+    while True:
+        maze = Maze(50, 50, 15, 23, 30, 30, win)
+        maze.generate_maze()
+        maze.solve()
+        sleep(0.5)
+        win.clear_canvas()
+    
 if __name__ == "__main__":
     main()
