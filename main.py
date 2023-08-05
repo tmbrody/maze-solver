@@ -1,60 +1,18 @@
-import tkinter as tk
-from tkinter import BOTH, Canvas, simpledialog
+from tkinter import Tk, BOTH, Canvas
 from time import sleep
 import random
 from collections import deque
 
 class Window:
-    def __init__(self, width=800, height=600):
+    def __init__(self, width, height):
         self.__width = width
         self.__height = height
-        self.__root = tk.Tk()
+        self.__root = Tk()
         self.__root.title("Maze Solver")
-
-        restart_button = tk.Button(self.__root, text="Restart", width=5, height=2, command=self.create_new_maze)
-        restart_button.pack(side=tk.TOP, anchor=tk.NE)
-
         self.__canvas = Canvas(self.__root, width=self.__width, height=self.__height)
         self.__canvas.pack()
+        self.__running = False
         self.__root.protocol("WM_DELETE_WINDOW", self.close)
-
-    def get_maze_parameters(self):
-        self.__root.withdraw()
-
-        dialog = MazeParametersDialog(self.__root)
-        self.__root.wait_window(dialog)
-
-        y_pad = dialog.y_pad_var.get()
-        num_rows = dialog.num_rows_var.get()
-        num_cols = dialog.num_cols_var.get()
-        cell_size_x = dialog.cell_size_x_var.get()
-        cell_size_y = dialog.cell_size_y_var.get()
-
-        self.__root.deiconify()
-
-        return y_pad, num_rows, num_cols, cell_size_x, cell_size_y
-    
-    def resize_canvas(self, width, height):
-        self.__width = width
-        self.__height = height
-        self.__canvas.config(width=width, height=height)
-        self.__root.geometry(f"{width}x{height}")
-    
-    def create_new_maze(self):
-        self.clear_canvas()
-        y_pad, num_rows, num_cols, cell_size_x, cell_size_y = self.get_maze_parameters()
-        maze_width = num_cols * cell_size_x
-        window_width = maze_width * 2
-        window_height = (num_rows * cell_size_y) * 2
-        x_pad = (window_width - maze_width) // 2
-        self.resize_canvas(window_width, window_height)
-        
-        while True:
-            maze = Maze(x_pad, y_pad, num_rows, num_cols, cell_size_x, cell_size_y, self)
-            maze.generate_maze()
-            maze.solve()
-            sleep(0.5)
-            self.clear_canvas()
 
     def redraw(self):
         self.__root.update_idletasks()
@@ -66,45 +24,13 @@ class Window:
     def clear_canvas(self):
         self.__canvas.delete("all")
 
+    def wait_for_close(self):
+        self.__running = True
+        while self.__running:
+            self.redraw()
+
     def close(self):
-        self.__root.destroy()
-
-class MazeParametersDialog(tk.Toplevel):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.geometry("400x300")
-        self.title("Maze Parameters")
-        self.parent = parent
-
-        self.y_pad_var = tk.IntVar(value=20)
-        self.num_rows_var = tk.IntVar(value=20)
-        self.num_cols_var = tk.IntVar(value=20)
-        self.cell_size_x_var = tk.IntVar(value=20)
-        self.cell_size_y_var = tk.IntVar(value=20)
-
-        self.protocol("WM_DELETE_WINDOW", self.master.destroy)
-
-        self.create_widgets()
-
-    def create_widgets(self):
-        tk.Label(self, text="Enter the maze parameters:").pack()
-
-        tk.Label(self, text="Maze top padding:").pack()
-        tk.Entry(self, textvariable=self.y_pad_var).pack()
-
-        tk.Label(self, text="Number of rows:").pack()
-        tk.Entry(self, textvariable=self.num_rows_var).pack()
-
-        tk.Label(self, text="Number of columns:").pack()
-        tk.Entry(self, textvariable=self.num_cols_var).pack()
-
-        tk.Label(self, text="Cell Width:").pack()
-        tk.Entry(self, textvariable=self.cell_size_x_var).pack()
-
-        tk.Label(self, text="Cell Height:").pack()
-        tk.Entry(self, textvariable=self.cell_size_y_var).pack()
-
-        tk.Button(self, text="OK", command=self.destroy).pack()
+        self.__running = False
 
 class Point:
     def __init__(self, x, y):
@@ -219,8 +145,8 @@ class Cell:
 class Maze:
     def __init__(
             self,
-            x_pad,
-            y_pad,
+            x1,
+            y1,
             num_rows,
             num_cols,
             cell_size_x,
@@ -228,8 +154,8 @@ class Maze:
             win=None,
             seed=None,
     ):
-        self._x_pad = x_pad
-        self._y_pad = y_pad
+        self._x1 = x1
+        self._y1 = y1
         self._num_rows = num_rows
         self._num_cols = num_cols
         self._cell_size_x = cell_size_x
@@ -250,8 +176,8 @@ class Maze:
         for i in range(self._num_cols):
             column = []
             for j in range(self._num_rows):
-                x1 = self._x_pad + i * self._cell_size_x
-                y1 = self._y_pad + j * self._cell_size_y
+                x1 = self._x1 + i * self._cell_size_x
+                y1 = self._y1 + j * self._cell_size_y
                 x2 = x1 + self._cell_size_x
                 y2 = y1 + self._cell_size_y
                 cell = Cell(x1, y1, x2, y2)
@@ -359,8 +285,14 @@ class Maze:
         return False
 
 def main():
-    win = Window()
-    win.create_new_maze()
+    win = Window(800, 600)
+
+    while True:
+        maze = Maze(50, 50, 15, 23, 30, 30, win)
+        maze.generate_maze()
+        maze.solve()
+        sleep(0.5)
+        win.clear_canvas()
     
 if __name__ == "__main__":
     main()
