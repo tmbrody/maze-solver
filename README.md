@@ -1,1 +1,1 @@
-This program will automatically generate and solve mazes made out of drawn cells.
+This program can generate mazes made out of drawn cells. Several of the maze's settings (such as the number of rows/columns and the width/height of the cells) can be modified before or during maze creation. After the maze has been created, the program will draw a red line between cells as it travels through different paths to reach the end of the maze. The program will continuously generate and solve mazes unless the settings are changed or the program is closed.
